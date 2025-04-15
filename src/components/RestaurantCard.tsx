@@ -11,6 +11,7 @@ interface RestaurantCardProps {
   partySize?: number;
   date?: string;
   onSelectTime?: (time: string) => void;
+  className?: string; // Add this to fix the TypeScript error
 }
 
 const RestaurantCard: React.FC<RestaurantCardProps> = ({ 
@@ -18,7 +19,8 @@ const RestaurantCard: React.FC<RestaurantCardProps> = ({
   availableTimes = [], 
   partySize, 
   date,
-  onSelectTime 
+  onSelectTime,
+  className = '' 
 }) => {
   // Cost rating display
   const renderCostRating = () => {
@@ -37,7 +39,7 @@ const RestaurantCard: React.FC<RestaurantCardProps> = ({
   };
 
   return (
-    <Card className="restaurant-card overflow-hidden h-full flex flex-col">
+    <div className={`restaurant-card overflow-hidden h-full flex flex-col ${className}`}>
       <div className="relative aspect-[16/9] overflow-hidden">
         <img 
           src={restaurant.images[0]} 
@@ -45,7 +47,7 @@ const RestaurantCard: React.FC<RestaurantCardProps> = ({
           className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
         />
       </div>
-      <CardContent className="p-4 flex flex-col flex-grow">
+      <div className="p-4 flex flex-col flex-grow">
         <div className="flex justify-between items-start mb-2">
           <Link to={`/restaurants/${restaurant.id}`} className="hover:text-burgundy-800">
             <h3 className="font-bold text-lg truncate">{restaurant.name}</h3>
@@ -76,10 +78,10 @@ const RestaurantCard: React.FC<RestaurantCardProps> = ({
         
         {/* Available time slots */}
         {availableTimes.length > 0 && (
-          <div className="mt-3">
-            <div className="flex items-center text-xs text-gray-500 mb-2">
-              <Users className="h-3 w-3 mr-1" />
-              <span>Table for {partySize} on {date}</span>
+          <div className="mt-3 bg-gray-50 p-3 rounded-lg">
+            <div className="flex items-center text-sm text-gray-700 mb-2">
+              <Users className="h-4 w-4 mr-2 text-burgundy-800" />
+              <span className="font-medium">Table for {partySize} on {date}</span>
             </div>
             <div className="flex flex-wrap gap-2">
               {availableTimes.map(time => (
@@ -94,8 +96,8 @@ const RestaurantCard: React.FC<RestaurantCardProps> = ({
             </div>
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 };
 
