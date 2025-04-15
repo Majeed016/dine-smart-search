@@ -13,6 +13,13 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { useAuth } from '@/context/AuthContext';
 import Navbar from '@/components/Navbar';
@@ -33,6 +40,9 @@ const formSchema = z.object({
     message: "Password must be at least 6 characters.",
   }),
   confirmPassword: z.string(),
+  role: z.string({
+    required_error: "Please select a role.",
+  }),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
@@ -51,6 +61,7 @@ const Register = () => {
       phone: "",
       password: "",
       confirmPassword: "",
+      role: "customer",
     },
   });
   
@@ -62,7 +73,8 @@ const Register = () => {
         values.name,
         values.email,
         values.phone,
-        values.password
+        values.password,
+        values.role
       );
       
       if (success) {
@@ -131,6 +143,32 @@ const Register = () => {
                     <FormControl>
                       <Input placeholder="Your phone number" {...field} />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="role"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Register as</FormLabel>
+                    <Select 
+                      onValueChange={field.onChange} 
+                      defaultValue={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select your role" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="customer">Customer</SelectItem>
+                        <SelectItem value="restaurantManager">Restaurant Manager</SelectItem>
+                        <SelectItem value="admin">Admin</SelectItem>
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}

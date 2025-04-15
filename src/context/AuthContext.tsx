@@ -5,9 +5,9 @@ import { toast } from '@/components/ui/use-toast';
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, password: string) => Promise<boolean>;
+  login: (email: string, password: string, role: string) => Promise<boolean>;
   logout: () => void;
-  register: (name: string, email: string, phone: string, password: string) => Promise<boolean>;
+  register: (name: string, email: string, phone: string, password: string, role: string) => Promise<boolean>;
   isLoading: boolean;
 }
 
@@ -26,14 +26,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(false);
   }, []);
 
-  const login = async (email: string, password: string): Promise<boolean> => {
+  const login = async (email: string, password: string, role: string): Promise<boolean> => {
     setIsLoading(true);
     
     // Simulate API call delay
     await new Promise(resolve => setTimeout(resolve, 1000));
     
     // In a real app, this would make an API call to verify credentials
-    const foundUser = users.find(u => u.email.toLowerCase() === email.toLowerCase());
+    const foundUser = users.find(u => 
+      u.email.toLowerCase() === email.toLowerCase() && 
+      u.role === role
+    );
     
     if (foundUser) {
       setUser(foundUser);
@@ -64,7 +67,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   };
   
-  const register = async (name: string, email: string, phone: string, password: string): Promise<boolean> => {
+  const register = async (name: string, email: string, phone: string, password: string, role: string): Promise<boolean> => {
     setIsLoading(true);
     
     // Simulate API call delay
@@ -89,7 +92,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       name,
       email,
       phone,
-      role: 'customer'
+      role: role as 'customer' | 'restaurantManager' | 'admin'
     };
     
     users.push(newUser);
