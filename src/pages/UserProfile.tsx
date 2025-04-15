@@ -1,7 +1,7 @@
-
-import React, { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { format, parseISO } from 'date-fns';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/context/AuthContext';
+import { format, parse } from 'date-fns';
 import { 
   Calendar, 
   Clock, 
@@ -30,8 +30,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from '@/components/ui/use-toast';
 import { Reservation, getReservationsByUserId, cancelReservation, getRestaurantById } from '@/data/mockData';
-import { useAuth } from '@/context/AuthContext';
-import Navbar from '@/components/Navbar';
+import { Navbar } from '@/components/Navbar';
 import Footer from '@/components/Footer';
 
 const UserProfile = () => {
