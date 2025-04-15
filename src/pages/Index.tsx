@@ -43,7 +43,15 @@ const Index = () => {
         <h2 className="text-3xl font-bold mb-8 text-center">Featured Restaurants</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {featuredRestaurants.map((restaurant) => (
-            <RestaurantCard key={restaurant.id} restaurant={restaurant} />
+            <div 
+              key={restaurant.id} 
+              className="bg-white shadow-lg rounded-lg overflow-hidden transform transition-all hover:scale-105 hover:shadow-xl"
+            >
+              <RestaurantCard 
+                restaurant={restaurant} 
+                className="p-4 h-full flex flex-col justify-between" 
+              />
+            </div>
           ))}
         </div>
         <div className="text-center mt-12">
