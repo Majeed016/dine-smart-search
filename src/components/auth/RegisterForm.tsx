@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -75,7 +74,16 @@ const RegisterForm = () => {
       );
       
       if (success) {
-        navigate('/');
+        switch (values.role) {
+          case 'admin':
+            navigate('/admin');
+            break;
+          case 'restaurantManager':
+            navigate('/restaurant-manager');
+            break;
+          default:
+            navigate('/');
+        }
       }
     } finally {
       setIsLoading(false);
@@ -126,7 +134,7 @@ const RegisterForm = () => {
             </FormItem>
           )}
         />
-
+        
         <FormField
           control={form.control}
           name="role"

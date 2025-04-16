@@ -13,7 +13,6 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -21,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 import { useAuth } from '@/context/AuthContext';
 import AuthLayout from '@/components/auth/AuthLayout';
 
@@ -56,7 +56,17 @@ const Login = () => {
     try {
       const success = await login(values.email, values.password, values.role);
       if (success) {
-        navigate('/');
+        // Navigate based on role
+        switch (values.role) {
+          case 'admin':
+            navigate('/admin');
+            break;
+          case 'restaurantManager':
+            navigate('/restaurant-manager');
+            break;
+          default:
+            navigate('/');
+        }
       }
     } finally {
       setIsLoading(false);
