@@ -1,95 +1,121 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User, users } from '../data/mockData';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
+import { Session, User } from '@supabase/supabase-js';
 
 interface AuthContextType {
   user: User | null;
+  session: Session | null;
   login: (email: string, password: string, role: string) => Promise<boolean>;
   logout: () => void;
   register: (name: string, email: string, phone: string, password: string, role: string) => Promise<boolean>;
   isLoading: boolean;
 }
 
-// Add an interface to track passwords since they're not stored in the mock data
-interface UserCredentials {
-  userId: string;
-  password: string;
+interface UserProfile {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  role: 'customer' | 'restaurantManager' | 'admin';
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  // Store user credentials in memory (in a real app, this would be handled by a proper backend)
-  const [userCredentials, setUserCredentials] = useState<UserCredentials[]>([]);
 
   useEffect(() => {
-    // Check for saved user in localStorage
-    const savedUser = localStorage.getItem('bookTableUser');
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
-    }
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, newSession) => {
+        setSession(newSession);
+        setUser(newSession?.user ?? null);
+      }
+    );
 
-    // Check for saved credentials in localStorage
-    const savedCredentials = localStorage.getItem('userCredentials');
-    if (savedCredentials) {
-      setUserCredentials(JSON.parse(savedCredentials));
-    } else {
-      // Initialize with default credentials for mock users
-      // In a real app, this would not be necessary as passwords would be stored securely in a database
-      const initialCredentials = users.map(u => ({
-        userId: u.id,
-        password: 'password123' // Default password for all mock users
-      }));
-      setUserCredentials(initialCredentials);
-      localStorage.setItem('userCredentials', JSON.stringify(initialCredentials));
-    }
+    // Check for existing session
+    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
+      setSession(currentSession);
+      setUser(currentSession?.user ?? null);
+      setIsLoading(false);
+    });
 
-    setIsLoading(false);
+    return () => subscription.unsubscribe();
   }, []);
 
   const login = async (email: string, password: string, role: string): Promise<boolean> => {
     setIsLoading(true);
     
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Find user by email and role
-    const foundUser = users.find(u => 
-      u.email.toLowerCase() === email.toLowerCase() && 
-      u.role === role
-    );
-    
-    if (foundUser) {
-      // Verify password using stored credentials
-      const userCred = userCredentials.find(cred => cred.userId === foundUser.id);
-      
-      if (userCred && userCred.password === password) {
-        setUser(foundUser);
-        localStorage.setItem('bookTableUser', JSON.stringify(foundUser));
-        setIsLoading(false);
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        toast({
+          title: "Login failed",
+          description: error.message,
+          variant: "destructive"
+        });
+        return false;
+      }
+
+      if (data.user) {
+        // Check if user has the specified role
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', data.user.id)
+          .single();
+
+        if (profileError || !profileData) {
+          toast({
+            title: "Login failed",
+            description: "Error retrieving user profile",
+            variant: "destructive"
+          });
+          await supabase.auth.signOut();
+          return false;
+        }
+
+        if (profileData.role !== role) {
+          toast({
+            title: "Login failed",
+            description: `You don't have ${role} access. Please select the correct role.`,
+            variant: "destructive"
+          });
+          await supabase.auth.signOut();
+          return false;
+        }
+
         toast({
           title: "Login successful",
-          description: `Welcome back, ${foundUser.name}!`,
+          description: `Welcome back!`,
         });
         return true;
       }
+
+      return false;
+    } catch (error) {
+      console.error('Login error:', error);
+      toast({
+        title: "Login failed",
+        description: "An unexpected error occurred",
+        variant: "destructive"
+      });
+      return false;
+    } finally {
+      setIsLoading(false);
     }
-    
-    setIsLoading(false);
-    toast({
-      title: "Login failed",
-      description: "Invalid email, password, or role",
-      variant: "destructive"
-    });
-    return false;
   };
   
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('bookTableUser');
+  const logout = async () => {
+    await supabase.auth.signOut();
     toast({
       title: "Logout successful",
       description: "You have been logged out",
@@ -99,51 +125,49 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const register = async (name: string, email: string, phone: string, password: string, role: string): Promise<boolean> => {
     setIsLoading(true);
     
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Check if user already exists
-    const existingUser = users.find(u => u.email.toLowerCase() === email.toLowerCase());
-    
-    if (existingUser) {
-      setIsLoading(false);
+    try {
+      // Sign up with Supabase
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            name,
+            phone,
+            role,
+          }
+        }
+      });
+
+      if (error) {
+        toast({
+          title: "Registration failed",
+          description: error.message,
+          variant: "destructive"
+        });
+        return false;
+      }
+
+      toast({
+        title: "Registration successful",
+        description: `Welcome, ${name}!`,
+      });
+      return true;
+    } catch (error) {
+      console.error('Registration error:', error);
       toast({
         title: "Registration failed",
-        description: "Email already in use",
+        description: "An unexpected error occurred",
         variant: "destructive"
       });
       return false;
+    } finally {
+      setIsLoading(false);
     }
-    
-    // Create new user (in a real app, this would make an API call)
-    const newUser: User = {
-      id: `user-${Date.now()}`,
-      name,
-      email,
-      phone,
-      role: role as 'customer' | 'restaurantManager' | 'admin'
-    };
-    
-    // Store the user
-    users.push(newUser);
-    setUser(newUser);
-    localStorage.setItem('bookTableUser', JSON.stringify(newUser));
-    
-    // Store the credentials
-    const newCredentials = [...userCredentials, { userId: newUser.id, password }];
-    setUserCredentials(newCredentials);
-    localStorage.setItem('userCredentials', JSON.stringify(newCredentials));
-    
-    setIsLoading(false);
-    toast({
-      title: "Registration successful",
-      description: `Welcome, ${name}!`,
-    });
-    return true;
   };
   
   return (
-    <AuthContext.Provider value={{ user, login, logout, register, isLoading }}>
+    <AuthContext.Provider value={{ user, session, login, logout, register, isLoading }}>
       {children}
     </AuthContext.Provider>
   );
