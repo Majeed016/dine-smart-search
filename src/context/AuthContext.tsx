@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, users } from '../data/mockData';
 import { toast } from '@/components/ui/use-toast';
@@ -36,6 +35,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const savedCredentials = localStorage.getItem('userCredentials');
     if (savedCredentials) {
       setUserCredentials(JSON.parse(savedCredentials));
+    } else {
+      // Initialize with default credentials for mock users
+      // In a real app, this would not be necessary as passwords would be stored securely in a database
+      const initialCredentials = users.map(u => ({
+        userId: u.id,
+        password: 'password123' // Default password for all mock users
+      }));
+      setUserCredentials(initialCredentials);
+      localStorage.setItem('userCredentials', JSON.stringify(initialCredentials));
     }
 
     setIsLoading(false);

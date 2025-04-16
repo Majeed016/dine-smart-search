@@ -165,7 +165,10 @@ const Login = () => {
               
               <div className="text-center text-sm text-gray-500">
                 <p>
-                  For demo purposes, you can use any email and password.
+                  For demo purposes, use any email and password <strong>"password123"</strong> for existing accounts.
+                </p>
+                <p className="mt-1">
+                  Or register a new account with your own password.
                 </p>
               </div>
             </form>
