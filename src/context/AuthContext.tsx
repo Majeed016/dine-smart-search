@@ -11,11 +11,19 @@ interface AuthContextType {
   isLoading: boolean;
 }
 
+// Add an interface to track passwords since they're not stored in the mock data
+interface UserCredentials {
+  userId: string;
+  password: string;
+}
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  // Store user credentials in memory (in a real app, this would be handled by a proper backend)
+  const [userCredentials, setUserCredentials] = useState<UserCredentials[]>([]);
 
   useEffect(() => {
     // Check for saved user in localStorage
@@ -23,6 +31,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (savedUser) {
       setUser(JSON.parse(savedUser));
     }
+
+    // Check for saved credentials in localStorage
+    const savedCredentials = localStorage.getItem('userCredentials');
+    if (savedCredentials) {
+      setUserCredentials(JSON.parse(savedCredentials));
+    }
+
     setIsLoading(false);
   }, []);
 
@@ -32,27 +47,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Simulate API call delay
     await new Promise(resolve => setTimeout(resolve, 1000));
     
-    // In a real app, this would make an API call to verify credentials
+    // Find user by email and role
     const foundUser = users.find(u => 
       u.email.toLowerCase() === email.toLowerCase() && 
       u.role === role
     );
     
     if (foundUser) {
-      setUser(foundUser);
-      localStorage.setItem('bookTableUser', JSON.stringify(foundUser));
-      setIsLoading(false);
-      toast({
-        title: "Login successful",
-        description: `Welcome back, ${foundUser.name}!`,
-      });
-      return true;
+      // Verify password using stored credentials
+      const userCred = userCredentials.find(cred => cred.userId === foundUser.id);
+      
+      if (userCred && userCred.password === password) {
+        setUser(foundUser);
+        localStorage.setItem('bookTableUser', JSON.stringify(foundUser));
+        setIsLoading(false);
+        toast({
+          title: "Login successful",
+          description: `Welcome back, ${foundUser.name}!`,
+        });
+        return true;
+      }
     }
     
     setIsLoading(false);
     toast({
       title: "Login failed",
-      description: "Invalid email or password",
+      description: "Invalid email, password, or role",
       variant: "destructive"
     });
     return false;
@@ -95,9 +115,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       role: role as 'customer' | 'restaurantManager' | 'admin'
     };
     
+    // Store the user
     users.push(newUser);
     setUser(newUser);
     localStorage.setItem('bookTableUser', JSON.stringify(newUser));
+    
+    // Store the credentials
+    const newCredentials = [...userCredentials, { userId: newUser.id, password }];
+    setUserCredentials(newCredentials);
+    localStorage.setItem('userCredentials', JSON.stringify(newCredentials));
     
     setIsLoading(false);
     toast({
