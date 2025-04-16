@@ -22,9 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useAuth } from '@/context/AuthContext';
-import Navbar from '@/components/Navbar';
-import Footer from '@/components/Footer';
-import Logo from '@/components/Logo';
+import AuthLayout from '@/components/auth/AuthLayout';
 
 const formSchema = z.object({
   email: z.string().email({
@@ -66,118 +64,107 @@ const Login = () => {
   };
   
   return (
-    <div className="min-h-screen flex flex-col">
-      <Navbar />
-      
-      <div className="flex-grow flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-lg shadow">
-          <div className="text-center">
-            <div className="flex justify-center mb-4">
-              <Logo size={32} />
+    <AuthLayout
+      title="Sign in to your account"
+      subtitle={
+        <>
+          Or{" "}
+          <Link to="/register" className="font-medium text-burgundy-800 hover:text-burgundy-700">
+            create a new account
+          </Link>
+        </>
+      }
+    >
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Email</FormLabel>
+                <FormControl>
+                  <Input placeholder="name@example.com" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          
+          <FormField
+            control={form.control}
+            name="password"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Password</FormLabel>
+                <FormControl>
+                  <Input type="password" placeholder="••••••••" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          
+          <FormField
+            control={form.control}
+            name="role"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Login as</FormLabel>
+                <Select 
+                  onValueChange={field.onChange} 
+                  defaultValue={field.value}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select your role" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="customer">Customer</SelectItem>
+                    <SelectItem value="restaurantManager">Restaurant Manager</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          
+          <div className="flex items-center justify-between">
+            <div className="text-sm">
+              <a href="#" className="font-medium text-burgundy-800 hover:text-burgundy-700">
+                Forgot your password?
+              </a>
             </div>
-            <h2 className="text-3xl font-extrabold text-gray-900">Sign in to your account</h2>
-            <p className="mt-2 text-sm text-gray-600">
-              Or{" "}
-              <Link to="/register" className="font-medium text-burgundy-800 hover:text-burgundy-700">
-                create a new account
-              </Link>
-            </p>
           </div>
           
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <FormControl>
-                      <Input placeholder="name@example.com" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Password</FormLabel>
-                    <FormControl>
-                      <Input type="password" placeholder="••••••••" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="role"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Login as</FormLabel>
-                    <Select 
-                      onValueChange={field.onChange} 
-                      defaultValue={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select your role" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="customer">Customer</SelectItem>
-                        <SelectItem value="restaurantManager">Restaurant Manager</SelectItem>
-                        <SelectItem value="admin">Admin</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <div className="flex items-center justify-between">
-                <div className="text-sm">
-                  <a href="#" className="font-medium text-burgundy-800 hover:text-burgundy-700">
-                    Forgot your password?
-                  </a>
-                </div>
-              </div>
-              
-              <Button 
-                type="submit" 
-                className="w-full bg-burgundy-800 hover:bg-burgundy-900"
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <>
-                    <div className="animate-spin mr-2 h-4 w-4 border-t-2 border-b-2 border-white rounded-full"></div>
-                    Signing in...
-                  </>
-                ) : (
-                  "Sign in"
-                )}
-              </Button>
-              
-              <div className="text-center text-sm text-gray-500">
-                <p>
-                  For demo purposes, use any email and password <strong>"password123"</strong> for existing accounts.
-                </p>
-                <p className="mt-1">
-                  Or register a new account with your own password.
-                </p>
-              </div>
-            </form>
-          </Form>
-        </div>
-      </div>
-      
-      <Footer />
-    </div>
+          <Button 
+            type="submit" 
+            className="w-full bg-burgundy-800 hover:bg-burgundy-900"
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <>
+                <div className="animate-spin mr-2 h-4 w-4 border-t-2 border-b-2 border-white rounded-full"></div>
+                Signing in...
+              </>
+            ) : (
+              "Sign in"
+            )}
+          </Button>
+          
+          <div className="text-center text-sm text-gray-500">
+            <p>
+              For demo purposes, use any email and password <strong>"password123"</strong> for existing accounts.
+            </p>
+            <p className="mt-1">
+              Or register a new account with your own password.
+            </p>
+          </div>
+        </form>
+      </Form>
+    </AuthLayout>
   );
 };
 
