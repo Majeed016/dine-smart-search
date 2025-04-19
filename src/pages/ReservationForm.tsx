@@ -130,7 +130,9 @@ const ReservationForm = () => {
         {restaurant ? (
           <>
             <h1 className="text-2xl font-bold mb-4">Reserve a Table at {restaurant.name}</h1>
-            <p className="text-gray-600 mb-6">{restaurant.cuisineType} • {restaurant.address}</p>
+            <p className="text-gray-600 mb-6">
+              {restaurant.cuisineType} • {restaurant.address.street}, {restaurant.address.city}
+            </p>
             
             <form onSubmit={handleSubmit} className="max-w-md mx-auto bg-white p-6 rounded-lg shadow-md">
               <div className="mb-4">
