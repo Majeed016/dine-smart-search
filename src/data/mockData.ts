@@ -8,13 +8,29 @@ export interface Restaurant {
   description: string;
   cuisineType: string;
   imageUrl: string;
-  address: string;
+  images: string[];
+  address: {
+    street: string;
+    city: string;
+    state: string;
+    zipCode: string;
+    coordinates: {
+      lat: number;
+      lng: number;
+    }
+  };
   phone: string;
   website: string;
   rating: number;
   reviewCount: number;
   costRating: number;
   openingHours: {
+    [key: string]: {
+      open: string;
+      close: string;
+    };
+  };
+  hours: {
     [key: string]: {
       open: string;
       close: string;
@@ -32,6 +48,17 @@ export interface Review {
   rating: number;
   date: string;
   comment: string;
+}
+
+export interface Reservation {
+  id: string;
+  restaurantId: string;
+  userId: string;
+  date: string;
+  time: string;
+  partySize: number;
+  status: 'confirmed' | 'cancelled' | 'completed';
+  createdAt: string;
 }
 
 // Set seed for reproducible data
@@ -63,6 +90,17 @@ const generateRestaurants = (): Restaurant[] => {
     const latitude = 34.05 + (Math.random() - 0.5) * 0.1;
     const longitude = -118.25 + (Math.random() - 0.5) * 0.1;
     const cuisineType = cuisineTypes[Math.floor(Math.random() * cuisineTypes.length)];
+    const mainImage = `https://source.unsplash.com/random/800x600/?${cuisineType.toLowerCase()},restaurant&sig=${index}`;
+    
+    const hours = {
+      monday: { open: '11:00', close: '22:00' },
+      tuesday: { open: '11:00', close: '22:00' },
+      wednesday: { open: '11:00', close: '22:00' },
+      thursday: { open: '11:00', close: '22:00' },
+      friday: { open: '11:00', close: '23:00' },
+      saturday: { open: '10:00', close: '23:00' },
+      sunday: { open: '10:00', close: '21:00' },
+    };
     
     return {
       id: `rest-${index + 1}`,
@@ -71,22 +109,29 @@ const generateRestaurants = (): Restaurant[] => {
         : faker.company.name() + ' ' + (Math.random() > 0.5 ? 'Restaurant' : 'Bistro'),
       description: faker.lorem.paragraph(),
       cuisineType,
-      imageUrl: `https://source.unsplash.com/random/800x600/?${cuisineType.toLowerCase()},restaurant&sig=${index}`,
-      address: faker.location.streetAddress() + ', ' + faker.location.city(),
+      imageUrl: mainImage,
+      images: [
+        mainImage,
+        `https://source.unsplash.com/random/800x600/?${cuisineType.toLowerCase()},food&sig=${index}-1`,
+        `https://source.unsplash.com/random/800x600/?${cuisineType.toLowerCase()},interior&sig=${index}-2`,
+      ],
+      address: {
+        street: faker.location.streetAddress(),
+        city: faker.location.city(),
+        state: faker.location.state(),
+        zipCode: faker.location.zipCode(),
+        coordinates: {
+          lat: latitude,
+          lng: longitude
+        }
+      },
       phone: faker.phone.number(),
       website: 'https://www.' + faker.internet.domainName(),
       rating: Number((3 + Math.random() * 2).toFixed(1)),
       reviewCount: Math.floor(10 + Math.random() * 490),
       costRating: Math.floor(1 + Math.random() * 4),
-      openingHours: {
-        monday: { open: '11:00', close: '22:00' },
-        tuesday: { open: '11:00', close: '22:00' },
-        wednesday: { open: '11:00', close: '22:00' },
-        thursday: { open: '11:00', close: '22:00' },
-        friday: { open: '11:00', close: '23:00' },
-        saturday: { open: '10:00', close: '23:00' },
-        sunday: { open: '10:00', close: '21:00' },
-      },
+      openingHours: hours,
+      hours: hours,
       bookedToday: Math.floor(Math.random() * 20),
       latitude,
       longitude,
@@ -106,7 +151,7 @@ const generateReviews = (restaurants: Restaurant[]): Review[] => {
         restaurantId: restaurant.id,
         userName: faker.person.fullName(),
         rating: Math.floor(1 + Math.random() * 5),
-        date: faker.date.recent(365).toISOString().split('T')[0],
+        date: faker.date.recent({ days: 365 }).toISOString().split('T')[0],
         comment: faker.lorem.paragraph(),
       });
     }
@@ -115,9 +160,42 @@ const generateReviews = (restaurants: Restaurant[]): Review[] => {
   return reviews;
 };
 
+// Generate mock reservations
+const generateReservations = (restaurants: Restaurant[]): Reservation[] => {
+  const reservations: Reservation[] = [];
+  
+  // Generate some sample user IDs
+  const userIds = Array.from({ length: 10 }, (_, i) => `user-${i + 1}`);
+  
+  restaurants.forEach(restaurant => {
+    const reservationCount = Math.floor(5 + Math.random() * 20);
+    
+    for (let i = 0; i < reservationCount; i++) {
+      const userId = userIds[Math.floor(Math.random() * userIds.length)];
+      const daysFromNow = Math.floor(Math.random() * 30) - 15; // -15 to +15 days
+      const date = new Date();
+      date.setDate(date.getDate() + daysFromNow);
+      
+      reservations.push({
+        id: `res-${restaurant.id}-${i}`,
+        restaurantId: restaurant.id,
+        userId,
+        date: date.toISOString().split('T')[0],
+        time: ['11:30', '12:00', '13:00', '18:30', '19:00', '20:00'][Math.floor(Math.random() * 6)],
+        partySize: Math.floor(1 + Math.random() * 6),
+        status: Math.random() > 0.8 ? 'cancelled' : (daysFromNow < 0 ? 'completed' : 'confirmed'),
+        createdAt: new Date(date.getTime() - 86400000 * Math.floor(Math.random() * 10)).toISOString()
+      });
+    }
+  });
+  
+  return reservations;
+};
+
 // Create the restaurants and reviews data
-const restaurants = generateRestaurants();
-const reviews = generateReviews(restaurants);
+export const restaurants = generateRestaurants();
+export const reviews = generateReviews(restaurants);
+export const reservations = generateReservations(restaurants);
 
 // Get restaurant by ID
 export const getRestaurantById = (id: string): Restaurant | null => {
@@ -127,6 +205,36 @@ export const getRestaurantById = (id: string): Restaurant | null => {
 // Get reviews for a restaurant
 export const getReviewsForRestaurant = (restaurantId: string): Review[] => {
   return reviews.filter(review => review.restaurantId === restaurantId);
+};
+
+// Alias for compatibility
+export const getReviewsByRestaurantId = getReviewsForRestaurant;
+
+// Get restaurants by manager ID (mock function)
+export const getRestaurantsByManagerId = (managerId: string): Restaurant[] => {
+  // In a real app, we would filter by manager ID
+  // For mock data, just return the first 3 restaurants
+  return restaurants.slice(0, 3);
+};
+
+// Get reservations by restaurant ID
+export const getReservationsByRestaurantId = (restaurantId: string): Reservation[] => {
+  return reservations.filter(reservation => reservation.restaurantId === restaurantId);
+};
+
+// Get reservations by user ID
+export const getReservationsByUserId = (userId: string): Reservation[] => {
+  return reservations.filter(reservation => reservation.userId === userId);
+};
+
+// Cancel a reservation
+export const cancelReservation = (reservationId: string): boolean => {
+  const index = reservations.findIndex(res => res.id === reservationId);
+  if (index !== -1) {
+    reservations[index].status = 'cancelled';
+    return true;
+  }
+  return false;
 };
 
 // Get restaurants by search criteria
@@ -142,7 +250,8 @@ export const getRestaurantsByAvailability = (
   if (location && location.trim() !== '') {
     const locationLower = location.toLowerCase();
     filteredRestaurants = restaurants.filter(restaurant => 
-      restaurant.address.toLowerCase().includes(locationLower) ||
+      restaurant.address.city.toLowerCase().includes(locationLower) ||
+      restaurant.address.state.toLowerCase().includes(locationLower) ||
       restaurant.name.toLowerCase().includes(locationLower) ||
       restaurant.cuisineType.toLowerCase().includes(locationLower)
     );
@@ -174,7 +283,7 @@ export const getAvailableTimeSlots = (
   date: string,
   partySize: number
 ): string[] => {
-  const dayOfWeek = new Date(date).toLocaleDateString('en-US', { weekday: 'lowercase' });
+  const dayOfWeek = new Date(date).toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
   const hours = restaurant.openingHours[dayOfWeek];
   
   if (!hours) return [];
