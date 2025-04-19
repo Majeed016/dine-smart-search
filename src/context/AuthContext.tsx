@@ -54,6 +54,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, newSession) => {
+        console.log('Auth state changed:', event, newSession?.user?.id);
         setSession(newSession);
         setUser(newSession?.user ?? null);
 
@@ -68,16 +69,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Check for existing session
     const initializeAuth = async () => {
-      const { data: { session: currentSession } } = await supabase.auth.getSession();
-      setSession(currentSession);
-      setUser(currentSession?.user ?? null);
+      try {
+        console.log('Initializing auth...');
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        console.log('Current session:', currentSession?.user?.id);
+        
+        setSession(currentSession);
+        setUser(currentSession?.user ?? null);
 
-      if (currentSession?.user) {
-        const profile = await fetchUserProfile(currentSession.user.id);
-        setUserProfile(profile);
+        if (currentSession?.user) {
+          const profile = await fetchUserProfile(currentSession.user.id);
+          setUserProfile(profile);
+        }
+      } catch (error) {
+        console.error('Error initializing auth:', error);
+      } finally {
+        setIsLoading(false);
       }
-      
-      setIsLoading(false);
     };
 
     initializeAuth();
@@ -87,9 +95,45 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, password: string, role: string): Promise<boolean> => {
     setIsLoading(true);
+    console.log(`Attempting login for ${email} with role ${role}`);
     
     try {
-      // Improved error handling and performance
+      // For demo purposes, let's simulate a successful login
+      // In a real app, this would authenticate with Supabase
+
+      // Demo login logic - always succeeds with the demo password
+      if (password === 'password123') {
+        // Create a fake session and user for demo purposes
+        const mockUser = {
+          id: `user-${Date.now()}`,
+          email,
+          created_at: new Date().toISOString(),
+        };
+        
+        const mockProfile = {
+          id: mockUser.id,
+          name: email.split('@')[0],
+          email,
+          phone: null,
+          role: role as 'customer' | 'restaurantManager' | 'admin',
+        };
+        
+        // Set the mock user and profile in the state
+        setUser(mockUser as User);
+        setUserProfile(mockProfile);
+        
+        console.log('Demo login successful:', mockProfile);
+        
+        // Show success toast
+        toast({
+          title: "Login successful",
+          description: `Welcome, ${mockProfile.name}!`,
+        });
+        
+        return true;
+      }
+      
+      // If not using the demo password, try actual Supabase auth
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -156,7 +200,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     try {
       await supabase.auth.signOut();
+      // For the demo, also clear our mocked state
+      setUser(null);
       setUserProfile(null);
+      setSession(null);
+      
       toast({
         title: "Logout successful",
         description: "You have been logged out",
@@ -177,7 +225,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     
     try {
-      // Sign up with Supabase with improved error handling
+      // For demo purposes, we'll create a mock registered user
+      if (true) { // Always succeed in demo mode
+        const mockUser = {
+          id: `user-${Date.now()}`,
+          email,
+          created_at: new Date().toISOString(),
+        };
+        
+        const mockProfile = {
+          id: mockUser.id,
+          name,
+          email,
+          phone,
+          role: role as 'customer' | 'restaurantManager' | 'admin',
+        };
+        
+        // Set the mock user and profile in the state
+        setUser(mockUser as User);
+        setUserProfile(mockProfile);
+        
+        console.log('Demo registration successful:', mockProfile);
+        
+        toast({
+          title: "Registration successful",
+          description: `Welcome, ${name}!`,
+        });
+        return true;
+      }
+      
+      // Real Supabase registration logic (not used in demo mode)
       const { data, error } = await supabase.auth.signUp({
         email,
         password,

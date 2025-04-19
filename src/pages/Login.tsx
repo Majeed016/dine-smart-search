@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -23,6 +22,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { useAuth } from '@/context/AuthContext';
 import AuthLayout from '@/components/auth/AuthLayout';
+import { toast } from '@/components/ui/use-toast';
 
 const formSchema = z.object({
   email: z.string().email({
@@ -54,9 +54,17 @@ const Login = () => {
     setIsLoading(true);
     
     try {
-      const success = await login(values.email, values.password, values.role);
+      const demoPassword = "password123";
+      
+      const passwordToUse = values.password === demoPassword ? demoPassword : values.password;
+      
+      const success = await login(values.email, passwordToUse, values.role);
       if (success) {
-        // Navigate based on role
+        toast({
+          title: "Login successful",
+          description: "You are now logged in",
+        });
+        
         switch (values.role) {
           case 'admin':
             navigate('/admin');
@@ -67,10 +75,31 @@ const Login = () => {
           default:
             navigate('/');
         }
+      } else {
+        toast({
+          title: "Login failed",
+          description: "Please check your credentials and try again.",
+          variant: "destructive"
+        });
       }
+    } catch (error) {
+      console.error("Login error:", error);
+      toast({
+        title: "Login failed",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive"
+      });
     } finally {
       setIsLoading(false);
     }
+  };
+  
+  const handleDemoLogin = (role: string) => {
+    form.setValue("email", `demo-${role}@example.com`);
+    form.setValue("password", "password123");
+    form.setValue("role", role);
+    
+    form.handleSubmit(onSubmit)();
   };
   
   return (
@@ -164,13 +193,42 @@ const Login = () => {
             )}
           </Button>
           
-          <div className="text-center text-sm text-gray-500">
+          <div className="text-center text-sm text-gray-500 space-y-4">
             <p>
               For demo purposes, use any email and password <strong>"password123"</strong> for existing accounts.
             </p>
-            <p className="mt-1">
-              Or register a new account with your own password.
+            <p>
+              Or use quick login buttons below:
             </p>
+            <div className="grid grid-cols-3 gap-2 mt-2">
+              <Button 
+                type="button" 
+                variant="outline" 
+                className="text-xs"
+                onClick={() => handleDemoLogin('customer')}
+                disabled={isLoading}
+              >
+                Customer Demo
+              </Button>
+              <Button 
+                type="button" 
+                variant="outline" 
+                className="text-xs"
+                onClick={() => handleDemoLogin('restaurantManager')}
+                disabled={isLoading}
+              >
+                Manager Demo
+              </Button>
+              <Button 
+                type="button" 
+                variant="outline" 
+                className="text-xs"
+                onClick={() => handleDemoLogin('admin')}
+                disabled={isLoading}
+              >
+                Admin Demo
+              </Button>
+            </div>
           </div>
         </form>
       </Form>
