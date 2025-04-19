@@ -36,7 +36,7 @@ import Footer from '@/components/Footer';
 
 const UserProfile = () => {
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user, userProfile, logout } = useAuth();
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [reservationToCancel, setReservationToCancel] = useState<Reservation | null>(null);
   const [loading, setLoading] = useState(true);
@@ -182,7 +182,7 @@ const UserProfile = () => {
             )}
           </div>
           
-          {user && (
+          {userProfile && (
             <div className="mb-8">
               <Card>
                 <CardHeader>
@@ -192,15 +192,15 @@ const UserProfile = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <h3 className="text-sm font-medium text-gray-500">Name</h3>
-                      <p>{user.name}</p>
+                      <p>{userProfile.name}</p>
                     </div>
                     <div>
                       <h3 className="text-sm font-medium text-gray-500">Email</h3>
-                      <p>{user.email}</p>
+                      <p>{userProfile.email}</p>
                     </div>
                     <div>
                       <h3 className="text-sm font-medium text-gray-500">Phone</h3>
-                      <p>{user.phone}</p>
+                      <p>{userProfile.phone}</p>
                     </div>
                   </div>
                 </CardContent>

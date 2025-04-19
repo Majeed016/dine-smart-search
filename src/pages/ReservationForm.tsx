@@ -1,364 +1,220 @@
-
-import React, { useEffect, useState } from 'react';
-import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
-import { format, parse } from 'date-fns';
-import { Calendar, Clock, Users, CheckCircle } from 'lucide-react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import { Button } from '@/components/ui/button';
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { format } from 'date-fns';
+import { DayPicker } from 'react-day-picker';
+import 'react-day-picker/dist/style.css';
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Checkbox } from '@/components/ui/checkbox';
-import { toast } from '@/components/ui/use-toast';
-import { getRestaurantById, addReservation } from '@/data/mockData';
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { CalendarIcon, Clock, Users } from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from '@/context/AuthContext';
+import { Restaurant, getRestaurantById } from '@/data/mockData';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 
-const formSchema = z.object({
-  name: z.string().min(2, {
-    message: "Name must be at least 2 characters.",
-  }),
-  email: z.string().email({
-    message: "Please enter a valid email address.",
-  }),
-  phone: z.string().min(10, {
-    message: "Please enter a valid phone number.",
-  }),
-  specialRequests: z.string().optional(),
-  termsAccepted: z.boolean().refine(value => value === true, {
-    message: "You must accept the terms and conditions.",
-  }),
-});
-
 const ReservationForm = () => {
   const { id } = useParams<{ id: string }>();
-  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
-  
-  const dateParam = searchParams.get('date');
-  const timeParam = searchParams.get('time');
-  const partySizeParam = searchParams.get('partySize');
-  
-  const [restaurant, setRestaurant] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [success, setSuccess] = useState(false);
-  
-  // Parse parameters
-  const date = dateParam || format(new Date(), 'yyyy-MM-dd');
-  const time = timeParam || '19:00';
-  const partySize = parseInt(partySizeParam || '2', 10);
-  
-  // Format date for display
-  const dateObj = parse(date, 'yyyy-MM-dd', new Date());
-  const formattedDate = format(dateObj, 'EEEE, MMMM d, yyyy');
+  const { user, userProfile } = useAuth();
+  const { toast } = useToast();
+  const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
+  const [date, setDate] = useState<Date | undefined>();
+  const [time, setTime] = useState('');
+  const [partySize, setPartySize] = useState('');
+  const [showDialog, setShowDialog] = useState(false);
   
   useEffect(() => {
-    setLoading(true);
+    if (!id) {
+      toast({
+        title: "Error",
+        description: "Restaurant ID is missing.",
+        variant: "destructive",
+      });
+      return;
+    }
     
-    // Simulate API request with timeout
-    setTimeout(() => {
-      if (id) {
-        const restaurantData = getRestaurantById(id);
-        if (restaurantData) {
-          setRestaurant(restaurantData);
-        }
-      }
-      setLoading(false);
-    }, 500);
-  }, [id]);
+    const restaurantData = getRestaurantById(id);
+    if (!restaurantData) {
+      toast({
+        title: "Error",
+        description: "Restaurant not found.",
+        variant: "destructive",
+      });
+      navigate('/search');
+      return;
+    }
+    
+    setRestaurant(restaurantData);
+  }, [id, navigate, toast]);
   
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      name: user ? user.name : "",
-      email: user ? user.email : "",
-      phone: user ? user.phone : "",
-      specialRequests: "",
-      termsAccepted: false,
-    },
-  });
-  
-  const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    if (!id) return;
+  const handleSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
     
-    setSubmitting(true);
+    if (!date || !time || !partySize) {
+      toast({
+        title: "Error",
+        description: "Please fill in all the fields.",
+        variant: "destructive",
+      });
+      return;
+    }
     
-    // Simulate API request with timeout
-    setTimeout(() => {
-      try {
-        // Add reservation
-        addReservation({
-          restaurantId: id,
-          userId: user ? user.id : 'guest',
-          date,
-          time,
-          partySize,
-          status: 'confirmed',
-        });
-        
-        setSubmitting(false);
-        setSuccess(true);
-        
-        toast({
-          title: "Reservation Confirmed!",
-          description: `Your table at ${restaurant?.name} has been booked.`,
-        });
-        
-        // In a real app, this would send confirmation email or SMS
-        console.log(`Reservation confirmation email would be sent to ${values.email}`);
-        console.log(`Reservation confirmation SMS would be sent to ${values.phone}`);
-        
-      } catch (error) {
-        setSubmitting(false);
-        toast({
-          title: "Error",
-          description: "There was a problem confirming your reservation. Please try again.",
-          variant: "destructive",
-        });
-      }
-    }, 1500);
+    if (!user) {
+      toast({
+        title: "Please log in",
+        description: "You need to be logged in to make a reservation.",
+      });
+      navigate('/login');
+      return;
+    }
+    
+    setShowDialog(true);
   };
   
-  // Render loading state
-  if (loading) {
-    return (
-      <div className="min-h-screen flex flex-col">
-        <Navbar />
-        <div className="flex-grow flex justify-center items-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-burgundy-800"></div>
-        </div>
-        <Footer />
-      </div>
-    );
-  }
+  const confirmReservation = () => {
+    setShowDialog(false);
+    
+    toast({
+      title: "Reservation Confirmed",
+      description: `Your reservation at ${restaurant?.name} on ${format(date as Date, 'MMMM d, yyyy')} at ${time} for ${partySize} people has been confirmed.`,
+    });
+    
+    navigate('/profile');
+  };
   
-  // Render not found state
-  if (!restaurant) {
-    return (
-      <div className="min-h-screen flex flex-col">
-        <Navbar />
-        <div className="flex-grow container mx-auto px-4 py-12 text-center">
-          <h1 className="text-3xl font-bold mb-4">Restaurant Not Found</h1>
-          <p className="mb-8">The restaurant you're looking for doesn't seem to exist.</p>
-          <Button onClick={() => navigate('/search')}>
-            Search for Restaurants
-          </Button>
-        </div>
-        <Footer />
-      </div>
-    );
-  }
-  
-  // Render success state
-  if (success) {
-    return (
-      <div className="min-h-screen flex flex-col">
-        <Navbar />
-        <div className="flex-grow container mx-auto px-4 py-12 max-w-lg mx-auto text-center">
-          <div className="bg-white rounded-lg border border-gray-200 p-8">
-            <div className="text-center mb-6">
-              <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
-              <h1 className="text-2xl font-bold mb-2">Reservation Confirmed!</h1>
-              <p className="text-gray-600">
-                Your table at {restaurant.name} has been booked.
-              </p>
-            </div>
-            
-            <div className="bg-gray-50 rounded p-4 mb-6">
-              <div className="grid grid-cols-2 gap-2 text-sm">
-                <div className="font-medium">Restaurant:</div>
-                <div>{restaurant.name}</div>
-                
-                <div className="font-medium">Date:</div>
-                <div>{formattedDate}</div>
-                
-                <div className="font-medium">Time:</div>
-                <div>{time}</div>
-                
-                <div className="font-medium">Party Size:</div>
-                <div>{partySize} {partySize === 1 ? 'person' : 'people'}</div>
-              </div>
-            </div>
-            
-            <p className="text-sm text-gray-600 mb-6">
-              A confirmation email has been sent with all the details of your reservation. 
-              You can manage or cancel your reservation from your account.
-            </p>
-            
-            <div className="flex flex-col sm:flex-row gap-3">
-              <Button
-                className="flex-1"
-                onClick={() => navigate(`/restaurants/${id}`)}
-                variant="outline"
-              >
-                Back to Restaurant
-              </Button>
-              <Button
-                className="flex-1 bg-burgundy-800 hover:bg-burgundy-900"
-                onClick={() => navigate('/profile')}
-              >
-                View My Reservations
-              </Button>
-            </div>
-          </div>
-        </div>
-        <Footer />
-      </div>
-    );
-  }
+  const name = userProfile?.name || '';
   
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
       
       <div className="container mx-auto px-4 py-8 flex-grow">
-        <div className="max-w-2xl mx-auto">
-          <h1 className="text-2xl font-bold mb-6">
-            Complete your reservation
-          </h1>
-          
-          <div className="bg-gray-50 rounded-lg p-4 mb-6">
-            <h2 className="font-semibold mb-2">{restaurant.name}</h2>
-            <div className="flex flex-wrap gap-4 text-sm">
-              <div className="flex items-center">
-                <Calendar className="h-4 w-4 mr-1" />
-                <span>{formattedDate}</span>
-              </div>
-              <div className="flex items-center">
-                <Clock className="h-4 w-4 mr-1" />
-                <span>{time}</span>
-              </div>
-              <div className="flex items-center">
-                <Users className="h-4 w-4 mr-1" />
-                <span>{partySize} {partySize === 1 ? 'person' : 'people'}</span>
-              </div>
-            </div>
-          </div>
-          
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <FormField
-                  control={form.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Full Name</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Your full name" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="phone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Phone Number</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Your phone number" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-              
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <FormControl>
-                      <Input type="email" placeholder="Your email address" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
+        {restaurant ? (
+          <>
+            <h1 className="text-2xl font-bold mb-4">Reserve a Table at {restaurant.name}</h1>
+            
+            <form onSubmit={handleSubmit} className="max-w-md mx-auto">
+              <div className="mb-4">
+                <Label htmlFor="date" className="block text-sm font-medium text-gray-700">
+                  Date
+                </Label>
+                <div className="relative">
+                  <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+                  <DayPicker
+                    mode="single"
+                    selected={date}
+                    onSelect={setDate}
+                    className="border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-burgundy-500 focus:border-burgundy-500 pl-10"
+                  />
+                </div>
+                {date && (
+                  <p className="mt-2 text-sm text-gray-500">
+                    Selected Date: {format(date, 'MMMM d, yyyy')}
+                  </p>
                 )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="specialRequests"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Special Requests (Optional)</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Any special requirements or preferences"
-                        className="resize-none"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="termsAccepted"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                    <FormControl>
-                      <Checkbox
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                    <div className="space-y-1 leading-none">
-                      <FormLabel>
-                        I agree with the{" "}
-                        <a href="#" className="text-burgundy-800 hover:underline">
-                          terms and conditions
-                        </a>
-                      </FormLabel>
-                      <FormMessage />
-                    </div>
-                  </FormItem>
-                )}
-              />
-              
-              <div className="text-sm text-gray-600 mb-4">
-                <p>
-                  By clicking "Confirm Reservation", you agree to the BookTable Terms of Use and Privacy Policy. 
-                  Standard text message rates may apply. You may opt out of receiving text messages at any time.
-                </p>
               </div>
               
-              <Button 
-                type="submit" 
-                className="w-full bg-burgundy-800 hover:bg-burgundy-900"
-                disabled={submitting}
-              >
-                {submitting ? (
-                  <>
-                    <div className="animate-spin mr-2 h-4 w-4 border-t-2 border-b-2 border-white rounded-full"></div>
-                    Processing...
-                  </>
-                ) : (
-                  "Confirm Reservation"
-                )}
+              <div className="mb-4">
+                <Label htmlFor="time" className="block text-sm font-medium text-gray-700">
+                  Time
+                </Label>
+                <Select onValueChange={setTime}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select a time" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="12:00">12:00 PM</SelectItem>
+                    <SelectItem value="12:30">12:30 PM</SelectItem>
+                    <SelectItem value="13:00">1:00 PM</SelectItem>
+                    <SelectItem value="13:30">1:30 PM</SelectItem>
+                    <SelectItem value="18:00">6:00 PM</SelectItem>
+                    <SelectItem value="18:30">6:30 PM</SelectItem>
+                    <SelectItem value="19:00">7:00 PM</SelectItem>
+                    <SelectItem value="19:30">7:30 PM</SelectItem>
+                    <SelectItem value="20:00">8:00 PM</SelectItem>
+                    <SelectItem value="20:30">8:30 PM</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="mb-4">
+                <Label htmlFor="partySize" className="block text-sm font-medium text-gray-700">
+                  Party Size
+                </Label>
+                <Select onValueChange={setPartySize}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select party size" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">1 person</SelectItem>
+                    <SelectItem value="2">2 people</SelectItem>
+                    <SelectItem value="3">3 people</SelectItem>
+                    <SelectItem value="4">4 people</SelectItem>
+                    <SelectItem value="5">5 people</SelectItem>
+                    <SelectItem value="6">6 people</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <Button type="submit" className="bg-burgundy-800 hover:bg-burgundy-900">
+                Make Reservation
               </Button>
             </form>
-          </Form>
-        </div>
+            
+            <Dialog open={showDialog} onOpenChange={setShowDialog}>
+              <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                  <DialogTitle>Confirm Reservation</DialogTitle>
+                  <DialogDescription>
+                    Are you sure you want to make a reservation at {restaurant.name} on {date ? format(date, 'MMMM d, yyyy') : 'N/A'} at {time} for {partySize} people?
+                  </DialogDescription>
+                </DialogHeader>
+                
+                <div className="grid gap-4 py-4">
+                  <div className="flex items-center space-x-2">
+                    <CalendarIcon className="h-4 w-4 text-gray-500" />
+                    <span>{date ? format(date, 'MMMM d, yyyy') : 'N/A'}</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Clock className="h-4 w-4 text-gray-500" />
+                    <span>{time}</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Users className="h-4 w-4 text-gray-500" />
+                    <span>{partySize} people</span>
+                  </div>
+                </div>
+                
+                <div className="flex justify-end space-x-2">
+                  <Button type="button" variant="secondary" onClick={() => setShowDialog(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="button" onClick={confirmReservation}>
+                    Confirm
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </>
+        ) : (
+          <p>Loading restaurant details...</p>
+        )}
       </div>
       
       <Footer />

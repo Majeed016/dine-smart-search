@@ -15,7 +15,7 @@ import { useAuth } from '@/context/AuthContext';
 
 const Navbar: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const { user, logout } = useAuth();
+  const { user, userProfile, logout } = useAuth();
   const navigate = useNavigate();
 
   const toggleMenu = () => {
@@ -28,9 +28,9 @@ const Navbar: React.FC = () => {
   };
 
   const getDashboardLink = () => {
-    if (!user) return '/';
+    if (!userProfile) return '/';
     
-    switch (user.role) {
+    switch (userProfile.role) {
       case 'admin':
         return '/admin';
       case 'restaurantManager':
@@ -56,12 +56,12 @@ const Navbar: React.FC = () => {
             <Link to="/search" className="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-burgundy-800 hover:bg-gray-50">
               Find a Table
             </Link>
-            {user ? (
+            {userProfile ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative rounded-full">
                     <User className="h-5 w-5" />
-                    <span className="ml-2">{user.name}</span>
+                    <span className="ml-2">{userProfile.name}</span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
@@ -114,7 +114,7 @@ const Navbar: React.FC = () => {
           >
             Find a Table
           </Link>
-          {user ? (
+          {userProfile ? (
             <>
               <Link
                 to={getDashboardLink()}
