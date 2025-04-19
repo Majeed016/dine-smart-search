@@ -1,12 +1,9 @@
+
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { format } from 'date-fns';
-import { DayPicker } from 'react-day-picker';
-import 'react-day-picker/dist/style.css';
-import { Button } from "@/components/ui/button";
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { format, parse } from 'date-fns';
 import { Calendar } from "@/components/ui/calendar";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -24,20 +21,22 @@ import {
 import { CalendarIcon, Clock, Users } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from '@/context/AuthContext';
-import { Restaurant, getRestaurantById } from '@/data/mockData';
+import { Restaurant, getRestaurantById, getAllTimeSlots } from '@/data/mockData';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 
 const ReservationForm = () => {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { user, userProfile } = useAuth();
   const { toast } = useToast();
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
-  const [date, setDate] = useState<Date | undefined>();
-  const [time, setTime] = useState('');
-  const [partySize, setPartySize] = useState('');
+  const [date, setDate] = useState<Date | undefined>(new Date());
+  const [time, setTime] = useState(searchParams.get('time') || '');
+  const [partySize, setPartySize] = useState(searchParams.get('partySize') || '2');
   const [showDialog, setShowDialog] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   
   useEffect(() => {
     if (!id) {
@@ -61,7 +60,14 @@ const ReservationForm = () => {
     }
     
     setRestaurant(restaurantData);
-  }, [id, navigate, toast]);
+    
+    // Set default values from query params
+    const dateParam = searchParams.get('date');
+    if (dateParam) {
+      const parsedDate = parse(dateParam, 'yyyy-MM-dd', new Date());
+      setDate(parsedDate);
+    }
+  }, [id, navigate, toast, searchParams]);
   
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
@@ -87,18 +93,34 @@ const ReservationForm = () => {
     setShowDialog(true);
   };
   
-  const confirmReservation = () => {
-    setShowDialog(false);
+  const confirmReservation = async () => {
+    if (!restaurant || !date || !time || !partySize || !userProfile) return;
     
-    toast({
-      title: "Reservation Confirmed",
-      description: `Your reservation at ${restaurant?.name} on ${format(date as Date, 'MMMM d, yyyy')} at ${time} for ${partySize} people has been confirmed.`,
-    });
+    setIsLoading(true);
     
-    navigate('/profile');
+    try {
+      // In a real app, this would be an API call to create the reservation
+      // For now, we'll simulate a success after a short delay
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      setShowDialog(false);
+      setIsLoading(false);
+      
+      toast({
+        title: "Reservation Confirmed",
+        description: `Your reservation at ${restaurant.name} on ${format(date as Date, 'MMMM d, yyyy')} at ${time} for ${partySize} people has been confirmed.`,
+      });
+      
+      navigate('/profile');
+    } catch (error) {
+      setIsLoading(false);
+      toast({
+        title: "Error",
+        description: "Failed to create reservation. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
-  
-  const name = userProfile?.name || '';
   
   return (
     <div className="min-h-screen flex flex-col">
@@ -108,19 +130,20 @@ const ReservationForm = () => {
         {restaurant ? (
           <>
             <h1 className="text-2xl font-bold mb-4">Reserve a Table at {restaurant.name}</h1>
+            <p className="text-gray-600 mb-6">{restaurant.cuisineType} • {restaurant.address}</p>
             
-            <form onSubmit={handleSubmit} className="max-w-md mx-auto">
+            <form onSubmit={handleSubmit} className="max-w-md mx-auto bg-white p-6 rounded-lg shadow-md">
               <div className="mb-4">
-                <Label htmlFor="date" className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Date
-                </Label>
-                <div className="relative">
-                  <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
-                  <DayPicker
+                </label>
+                <div className="border rounded-md p-2">
+                  <Calendar
                     mode="single"
                     selected={date}
-                    onSelect={setDate}
-                    className="border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-burgundy-500 focus:border-burgundy-500 pl-10"
+                    onSelect={(newDate) => setDate(newDate)}
+                    disabled={(date) => date < new Date()}
+                    className="mx-auto"
                   />
                 </div>
                 {date && (
@@ -131,48 +154,45 @@ const ReservationForm = () => {
               </div>
               
               <div className="mb-4">
-                <Label htmlFor="time" className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Time
-                </Label>
-                <Select onValueChange={setTime}>
+                </label>
+                <Select value={time} onValueChange={setTime}>
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Select a time" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="12:00">12:00 PM</SelectItem>
-                    <SelectItem value="12:30">12:30 PM</SelectItem>
-                    <SelectItem value="13:00">1:00 PM</SelectItem>
-                    <SelectItem value="13:30">1:30 PM</SelectItem>
-                    <SelectItem value="18:00">6:00 PM</SelectItem>
-                    <SelectItem value="18:30">6:30 PM</SelectItem>
-                    <SelectItem value="19:00">7:00 PM</SelectItem>
-                    <SelectItem value="19:30">7:30 PM</SelectItem>
-                    <SelectItem value="20:00">8:00 PM</SelectItem>
-                    <SelectItem value="20:30">8:30 PM</SelectItem>
+                    {getAllTimeSlots().map(timeSlot => (
+                      <SelectItem key={timeSlot} value={timeSlot}>
+                        {timeSlot}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
               
-              <div className="mb-4">
-                <Label htmlFor="partySize" className="block text-sm font-medium text-gray-700">
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Party Size
-                </Label>
-                <Select onValueChange={setPartySize}>
+                </label>
+                <Select value={partySize} onValueChange={setPartySize}>
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Select party size" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="1">1 person</SelectItem>
-                    <SelectItem value="2">2 people</SelectItem>
-                    <SelectItem value="3">3 people</SelectItem>
-                    <SelectItem value="4">4 people</SelectItem>
-                    <SelectItem value="5">5 people</SelectItem>
-                    <SelectItem value="6">6 people</SelectItem>
+                    {[...Array(10)].map((_, i) => (
+                      <SelectItem key={i + 1} value={(i + 1).toString()}>
+                        {i + 1} {i === 0 ? 'person' : 'people'}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
               
-              <Button type="submit" className="bg-burgundy-800 hover:bg-burgundy-900">
+              <Button 
+                type="submit" 
+                className="w-full bg-burgundy-800 hover:bg-burgundy-900 text-white font-medium py-2 rounded-md"
+              >
                 Make Reservation
               </Button>
             </form>
@@ -182,11 +202,15 @@ const ReservationForm = () => {
                 <DialogHeader>
                   <DialogTitle>Confirm Reservation</DialogTitle>
                   <DialogDescription>
-                    Are you sure you want to make a reservation at {restaurant.name} on {date ? format(date, 'MMMM d, yyyy') : 'N/A'} at {time} for {partySize} people?
+                    Please confirm your reservation details:
                   </DialogDescription>
                 </DialogHeader>
                 
                 <div className="grid gap-4 py-4">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold">Restaurant:</span>
+                    <span>{restaurant.name}</span>
+                  </div>
                   <div className="flex items-center space-x-2">
                     <CalendarIcon className="h-4 w-4 text-gray-500" />
                     <span>{date ? format(date, 'MMMM d, yyyy') : 'N/A'}</span>
@@ -202,18 +226,24 @@ const ReservationForm = () => {
                 </div>
                 
                 <div className="flex justify-end space-x-2">
-                  <Button type="button" variant="secondary" onClick={() => setShowDialog(false)}>
+                  <Button variant="outline" onClick={() => setShowDialog(false)}>
                     Cancel
                   </Button>
-                  <Button type="button" onClick={confirmReservation}>
-                    Confirm
+                  <Button 
+                    onClick={confirmReservation}
+                    disabled={isLoading}
+                    className="bg-burgundy-800 hover:bg-burgundy-900"
+                  >
+                    {isLoading ? 'Processing...' : 'Confirm Reservation'}
                   </Button>
                 </div>
               </DialogContent>
             </Dialog>
           </>
         ) : (
-          <p>Loading restaurant details...</p>
+          <div className="flex justify-center items-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-burgundy-800"></div>
+          </div>
         )}
       </div>
       

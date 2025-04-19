@@ -32,10 +32,10 @@ const TimeSlots: React.FC<TimeSlotsProps> = ({
         {availableTimes.map((time) => (
           <button
             key={time}
-            className={`time-slot-button ${
+            className={`px-3 py-2 text-sm rounded-md transition-colors ${
               selectedTime === time
-                ? 'time-slot-button-selected'
-                : 'time-slot-button-available'
+                ? 'bg-burgundy-800 text-white hover:bg-burgundy-900'
+                : 'bg-gray-100 hover:bg-gray-200 text-gray-800'
             }`}
             onClick={() => onSelectTime(time)}
           >

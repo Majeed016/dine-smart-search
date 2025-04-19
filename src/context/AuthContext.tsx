@@ -67,7 +67,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     );
 
     // Check for existing session
-    supabase.auth.getSession().then(async ({ data: { session: currentSession } }) => {
+    const initializeAuth = async () => {
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
       setSession(currentSession);
       setUser(currentSession?.user ?? null);
 
@@ -77,7 +78,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       setIsLoading(false);
-    });
+    };
+
+    initializeAuth();
 
     return () => subscription.unsubscribe();
   }, []);
@@ -86,12 +89,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     
     try {
+      // Improved error handling and performance
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) {
+        console.error('Login error details:', error);
         toast({
           title: "Login failed",
           description: error.message,
@@ -148,19 +153,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
   
   const logout = async () => {
-    await supabase.auth.signOut();
-    setUserProfile(null);
-    toast({
-      title: "Logout successful",
-      description: "You have been logged out",
-    });
+    setIsLoading(true);
+    try {
+      await supabase.auth.signOut();
+      setUserProfile(null);
+      toast({
+        title: "Logout successful",
+        description: "You have been logged out",
+      });
+    } catch (error) {
+      console.error('Logout error:', error);
+      toast({
+        title: "Logout failed",
+        description: "An unexpected error occurred",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
   
   const register = async (name: string, email: string, phone: string, password: string, role: string): Promise<boolean> => {
     setIsLoading(true);
     
     try {
-      // Sign up with Supabase
+      // Sign up with Supabase with improved error handling
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -174,6 +191,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
 
       if (error) {
+        console.error('Registration error details:', error);
         toast({
           title: "Registration failed",
           description: error.message,
