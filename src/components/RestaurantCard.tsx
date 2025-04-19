@@ -24,13 +24,20 @@ const RestaurantCard: React.FC<RestaurantCardProps> = ({
   onSelectTime,
   className = '' 
 }) => {
+  // Fallback image URL if the restaurant image is not available
+  const fallbackImage = "https://source.unsplash.com/random/800x600/?restaurant";
+  
   return (
     <div className={`restaurant-card overflow-hidden h-full flex flex-col ${className}`}>
       <div className="relative aspect-[16/9] overflow-hidden">
         <img 
-          src={restaurant.images[0]} 
+          src={restaurant.images && restaurant.images.length > 0 ? restaurant.images[0] : fallbackImage} 
           alt={restaurant.name} 
           className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+          onError={(e) => {
+            const target = e.target as HTMLImageElement;
+            target.src = fallbackImage;
+          }}
         />
       </div>
       <div className="p-4 flex flex-col flex-grow">

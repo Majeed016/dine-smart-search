@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { format, parse } from 'date-fns';
@@ -35,6 +34,8 @@ const RestaurantDetails = () => {
   const [selectedTime, setSelectedTime] = useState<string | null>(timeParam);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   
+  const fallbackImage = "https://source.unsplash.com/random/800x600/?restaurant";
+  
   useEffect(() => {
     setLoading(true);
     
@@ -43,6 +44,11 @@ const RestaurantDetails = () => {
       if (id) {
         const restaurantData = getRestaurantById(id);
         if (restaurantData) {
+          // Ensure the restaurant data has images
+          if (!restaurantData.images || restaurantData.images.length === 0) {
+            restaurantData.images = [fallbackImage];
+          }
+          
           setRestaurant(restaurantData);
           
           // Get available times
@@ -91,7 +97,14 @@ const RestaurantDetails = () => {
     }
   };
   
-  // Render loading state
+  const handleImageError = (index: number) => {
+    if (restaurant && restaurant.images) {
+      const newImages = [...restaurant.images];
+      newImages[index] = fallbackImage;
+      setRestaurant({...restaurant, images: newImages});
+    }
+  };
+  
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col">
@@ -104,7 +117,6 @@ const RestaurantDetails = () => {
     );
   }
   
-  // Render not found state
   if (!restaurant) {
     return (
       <div className="min-h-screen flex flex-col">
@@ -121,7 +133,6 @@ const RestaurantDetails = () => {
     );
   }
   
-  // Format hours for display
   const formatHours = () => {
     const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
     
@@ -136,10 +147,8 @@ const RestaurantDetails = () => {
     });
   };
   
-  // Get restaurant reviews
   const reviews = getReviewsByRestaurantId(restaurant.id);
   
-  // Display cost rating
   const renderCostRating = () => {
     const dollarSigns = [];
     for (let i = 1; i <= 4; i++) {
@@ -155,7 +164,6 @@ const RestaurantDetails = () => {
     return <div className="cost-rating inline-flex">{dollarSigns}</div>;
   };
   
-  // Current day of week
   const currentDay = format(new Date(), 'EEEE').toLowerCase();
   const todayHours = restaurant.hours[currentDay as keyof typeof restaurant.hours];
   
@@ -164,13 +172,13 @@ const RestaurantDetails = () => {
       <Navbar />
       
       <div className="container mx-auto px-4 py-8 flex-grow">
-        {/* Restaurant Gallery */}
         <div className="mb-8">
           <div className="relative aspect-[21/9] overflow-hidden rounded-xl mb-2">
             <img 
               src={restaurant.images[activeImageIndex]} 
               alt={restaurant.name} 
               className="w-full h-full object-cover"
+              onError={() => handleImageError(activeImageIndex)}
             />
           </div>
           
@@ -187,6 +195,7 @@ const RestaurantDetails = () => {
                   src={image} 
                   alt={`${restaurant.name} ${index + 1}`} 
                   className="w-full h-full object-cover"
+                  onError={() => handleImageError(index)}
                 />
               </div>
             ))}
@@ -194,7 +203,6 @@ const RestaurantDetails = () => {
         </div>
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Restaurant Details */}
           <div className="lg:col-span-2">
             <h1 className="text-3xl font-bold mb-2">{restaurant.name}</h1>
             
@@ -282,13 +290,11 @@ const RestaurantDetails = () => {
             </Tabs>
           </div>
           
-          {/* Reservation Form */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-lg border border-gray-200 p-6 sticky top-6">
               <h2 className="text-xl font-semibold mb-4">Make a reservation</h2>
               
               <div className="space-y-4 mb-6">
-                {/* Party Size */}
                 <div>
                   <label className="block text-sm font-medium mb-1">Party Size</label>
                   <Select value={partySize.toString()} onValueChange={handlePartySizeChange}>
@@ -306,7 +312,6 @@ const RestaurantDetails = () => {
                   </Select>
                 </div>
                 
-                {/* Date Picker */}
                 <div>
                   <label className="block text-sm font-medium mb-1">Date</label>
                   <Popover>
@@ -332,7 +337,6 @@ const RestaurantDetails = () => {
                   </Popover>
                 </div>
                 
-                {/* Time Slots */}
                 <div>
                   <label className="block text-sm font-medium mb-1">Time</label>
                   <TimeSlots

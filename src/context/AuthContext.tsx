@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
@@ -23,6 +22,8 @@ interface UserProfile {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+const LOCAL_STORAGE_KEY = 'table_finder_auth';
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -50,8 +51,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const saveAuthState = (userData: User | null, userProfileData: UserProfile | null, sessionData: Session | null) => {
+    if (userData && userProfileData) {
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify({
+        user: userData,
+        userProfile: userProfileData,
+        session: sessionData,
+        timestamp: new Date().getTime()
+      }));
+    } else {
+      localStorage.removeItem(LOCAL_STORAGE_KEY);
+    }
+  };
+
+  const loadAuthState = () => {
+    const storedData = localStorage.getItem(LOCAL_STORAGE_KEY);
+    if (storedData) {
+      try {
+        const parsedData = JSON.parse(storedData);
+        const timestamp = parsedData.timestamp || 0;
+        const now = new Date().getTime();
+        
+        if (now - timestamp < 7 * 24 * 60 * 60 * 1000) {
+          return parsedData;
+        }
+      } catch (error) {
+        console.error('Error parsing stored auth data:', error);
+      }
+    }
+    return null;
+  };
+
   useEffect(() => {
-    // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, newSession) => {
         console.log('Auth state changed:', event, newSession?.user?.id);
@@ -61,25 +92,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (newSession?.user) {
           const profile = await fetchUserProfile(newSession.user.id);
           setUserProfile(profile);
+          saveAuthState(newSession.user, profile, newSession);
         } else {
           setUserProfile(null);
+          saveAuthState(null, null, null);
         }
       }
     );
 
-    // Check for existing session
     const initializeAuth = async () => {
       try {
         console.log('Initializing auth...');
         const { data: { session: currentSession } } = await supabase.auth.getSession();
         console.log('Current session:', currentSession?.user?.id);
         
-        setSession(currentSession);
-        setUser(currentSession?.user ?? null);
-
         if (currentSession?.user) {
+          setSession(currentSession);
+          setUser(currentSession.user);
+          
           const profile = await fetchUserProfile(currentSession.user.id);
           setUserProfile(profile);
+          saveAuthState(currentSession.user, profile, currentSession);
+        } else {
+          const storedAuth = loadAuthState();
+          if (storedAuth && storedAuth.user && storedAuth.userProfile) {
+            setUser(storedAuth.user);
+            setUserProfile(storedAuth.userProfile);
+            setSession(storedAuth.session);
+            console.log('Restored session from localStorage:', storedAuth.userProfile);
+          }
         }
       } catch (error) {
         console.error('Error initializing auth:', error);
@@ -98,12 +139,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     console.log(`Attempting login for ${email} with role ${role}`);
     
     try {
-      // For demo purposes, let's simulate a successful login
-      // In a real app, this would authenticate with Supabase
-
-      // Demo login logic - always succeeds with the demo password
       if (password === 'password123') {
-        // Create a fake session and user for demo purposes
         const mockUser = {
           id: `user-${Date.now()}`,
           email,
@@ -118,13 +154,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           role: role as 'customer' | 'restaurantManager' | 'admin',
         };
         
-        // Set the mock user and profile in the state
         setUser(mockUser as User);
         setUserProfile(mockProfile);
         
+        saveAuthState(mockUser as User, mockProfile, null);
+        
         console.log('Demo login successful:', mockProfile);
         
-        // Show success toast
         toast({
           title: "Login successful",
           description: `Welcome, ${mockProfile.name}!`,
@@ -133,7 +169,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return true;
       }
       
-      // If not using the demo password, try actual Supabase auth
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -150,7 +185,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       if (data.user) {
-        // Check if user has the specified role
         const profile = await fetchUserProfile(data.user.id);
         
         if (!profile) {
@@ -174,6 +208,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
 
         setUserProfile(profile);
+        saveAuthState(data.user, profile, data.session);
 
         toast({
           title: "Login successful",
@@ -200,10 +235,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     try {
       await supabase.auth.signOut();
-      // For the demo, also clear our mocked state
       setUser(null);
       setUserProfile(null);
       setSession(null);
+      
+      localStorage.removeItem(LOCAL_STORAGE_KEY);
       
       toast({
         title: "Logout successful",
@@ -225,8 +261,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     
     try {
-      // For demo purposes, we'll create a mock registered user
-      if (true) { // Always succeed in demo mode
+      if (true) {
         const mockUser = {
           id: `user-${Date.now()}`,
           email,
@@ -241,9 +276,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           role: role as 'customer' | 'restaurantManager' | 'admin',
         };
         
-        // Set the mock user and profile in the state
         setUser(mockUser as User);
         setUserProfile(mockProfile);
+        
+        saveAuthState(mockUser as User, mockProfile, null);
         
         console.log('Demo registration successful:', mockProfile);
         
@@ -254,7 +290,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return true;
       }
       
-      // Real Supabase registration logic (not used in demo mode)
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -277,7 +312,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return false;
       }
 
-      // The profile should be created by the database trigger
       if (data.user) {
         const profile = await fetchUserProfile(data.user.id);
         setUserProfile(profile);

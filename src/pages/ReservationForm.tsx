@@ -122,6 +122,13 @@ const ReservationForm = () => {
     }
   };
   
+  // Format address as a string
+  const formatAddress = (restaurant: Restaurant) => {
+    if (!restaurant || !restaurant.address) return '';
+    const { street, city, state } = restaurant.address;
+    return `${street}, ${city}, ${state}`;
+  };
+  
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
@@ -131,7 +138,7 @@ const ReservationForm = () => {
           <>
             <h1 className="text-2xl font-bold mb-4">Reserve a Table at {restaurant.name}</h1>
             <p className="text-gray-600 mb-6">
-              {restaurant.cuisineType} • {restaurant.address.street}, {restaurant.address.city}
+              {restaurant.cuisineType} • {formatAddress(restaurant)}
             </p>
             
             <form onSubmit={handleSubmit} className="max-w-md mx-auto bg-white p-6 rounded-lg shadow-md">
